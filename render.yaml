@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: HunarHub
+    env: node
+    plan: free
+    branch: main
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    autoDeploy: true

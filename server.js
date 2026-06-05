@@ -2,10 +2,62 @@ import dotenv from 'dotenv';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { promises as fs } from 'fs';
 import { Readable } from 'stream';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '.env') });
+
+const CLIENT_DIR = path.join(__dirname, 'dist', 'client');
+
+const mimeTypes = {
+  '.js': 'application/javascript',
+  '.mjs': 'application/javascript',
+  '.css': 'text/css',
+  '.html': 'text/html',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
+  '.otf': 'font/otf',
+  '.map': 'application/json',
+  '.ico': 'image/vnd.microsoft.icon',
+};
+
+async function serveStaticIfExists(req, res) {
+  const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+  const pathname = decodeURIComponent(url.pathname);
+  const hasFileExtension = path.extname(pathname) !== '';
+
+  if (!hasFileExtension) return false;
+
+  const relativePath = pathname.replace(/^\/+/, '');
+  const filePath = path.join(CLIENT_DIR, relativePath);
+  if (!filePath.startsWith(CLIENT_DIR)) return false;
+
+  try {
+    const stat = await fs.stat(filePath);
+    if (!stat.isFile()) return false;
+  } catch {
+    return false;
+  }
+
+  const contentType = mimeTypes[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+  const data = await fs.readFile(filePath);
+  res.writeHead(200, {
+    'content-type': contentType,
+    'cache-control': 'public, max-age=31536000, immutable',
+  });
+  res.end(data);
+  return true;
+}
 
 let server;
 async function getServer() {
@@ -65,6 +117,10 @@ async function sendResponse(res, response) {
 
 const httpServer = http.createServer(async (req, res) => {
   try {
+    if (await serveStaticIfExists(req, res)) {
+      return;
+    }
+
     const request = createRequest(req);
     const appServer = await getServer();
     const response = await appServer.fetch(request, {}, {});

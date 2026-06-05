@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Hammer } from "lucide-react";
 
 export function SiteNavbar() {
-  const { session, role, loading } = useSession();
+  const { user, role, loading } = useSession();
   const navigate = useNavigate();
 
   function signOut() {
@@ -31,7 +31,7 @@ export function SiteNavbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          {loading ? null : session ? (
+          {loading ? null : user ? (
             <>
               <Button asChild variant="ghost" size="sm">
                 <Link to={dashboardPathFor(role)}>Dashboard</Link>
