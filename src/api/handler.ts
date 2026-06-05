@@ -82,8 +82,6 @@ function buildOrderResponse(order: any, artisanProfile?: any, artisanUser?: any)
 
 // NOTE: The API requires MongoDB to be available. No local mock fallback is used.
 
-// Reset mongooseConnected for each request to ensure fresh connection checks
-let mongooseConnected = false;
 // Ensure we only attempt to seed an admin user once per process
 let adminSeeded = false;
 
@@ -131,7 +129,6 @@ export async function handleApiRequest(request: Request): Promise<Response> {
   // Try to connect Mongoose, but if it fails then fall back to in-memory auth and sample data behavior.
   try {
     await connectMongoose();
-    mongooseConnected = true;
     // Seed a default admin user if missing (useful for local dev)
     try {
       if (!adminSeeded && isMongooseConnected()) {
