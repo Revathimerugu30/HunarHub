@@ -93,6 +93,7 @@ function createRequest(req) {
 
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     init.body = Readable.toWeb(req);
+    init.duplex = 'half';
   }
 
   return new Request(url.toString(), init);

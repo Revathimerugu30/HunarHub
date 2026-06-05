@@ -165,7 +165,6 @@ export async function handleApiRequest(request: Request): Promise<Response> {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('Mongoose not connected, using in-memory fallback');
-    mongooseConnected = false;
   }
 
   const authUser = extractAuthUser(request);
