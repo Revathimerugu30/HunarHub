@@ -1,8 +1,10 @@
-﻿const { promises: fs } = require('fs');
-const path = require('path');
-const { pathToFileURL } = require('url');
-const { Readable } = require('stream');
+﻿import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { Readable } from 'stream';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const ROOT_DIR = path.join(__dirname, '..');
 const CLIENT_DIR = path.join(ROOT_DIR, 'dist', 'client');
 const SERVER_PATH = path.join(ROOT_DIR, 'dist', 'server', 'server.js');
@@ -113,7 +115,7 @@ async function getAppServer() {
   return appServer;
 }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   try {
     if (await serveStaticIfExists(req, res)) {
       return;
@@ -129,4 +131,4 @@ module.exports = async function handler(req, res) {
     res.setHeader('content-type', 'text/plain; charset=utf-8');
     res.end('Internal Server Error');
   }
-};
+}
