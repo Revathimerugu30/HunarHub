@@ -10,10 +10,9 @@ const MONGODB_DB = process.env.MONGODB_DB || 'hunarhub';
 
 if (!process.env.MONGODB_URI) {
   // eslint-disable-next-line no-console
-  console.error('❌ MONGODB_URI environment variable not set! App will not connect to MongoDB.');
+  console.error('❌ MONGODB_URI environment variable not set! MongoDB connections will fail at runtime.');
   // eslint-disable-next-line no-console
-  console.error('❌ Please set MONGODB_URI in .env file.');
-  process.exit(1);
+  console.error('❌ Please set MONGODB_URI in your environment (e.g., Vercel Environment Variables).');
 } else {
   // eslint-disable-next-line no-console
   console.log('✅ MONGODB_URI loaded from environment');
