@@ -1,10 +1,11 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { Readable } from 'stream';
+﻿const { promises: fs } = require('fs');
+const path = require('path');
+const { pathToFileURL } = require('url');
+const { Readable } = require('stream');
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CLIENT_DIR = path.join(__dirname, '..', 'dist', 'client');
+const ROOT_DIR = path.join(__dirname, '..');
+const CLIENT_DIR = path.join(ROOT_DIR, 'dist', 'client');
+const SERVER_PATH = path.join(ROOT_DIR, 'dist', 'server', 'server.js');
 
 const mimeTypes = {
   '.js': 'application/javascript',
@@ -28,7 +29,7 @@ const mimeTypes = {
 };
 
 async function serveStaticIfExists(req, res) {
-  const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+  const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
   const pathname = decodeURIComponent(url.pathname);
   const hasFileExtension = path.extname(pathname) !== '';
 
@@ -45,7 +46,7 @@ async function serveStaticIfExists(req, res) {
     return false;
   }
 
-  const contentType = mimeTypes[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream';
+  const contentType = mimeTypes[path.extname(filePath).toLowerCase()] || 'application/octet-stream';
   const data = await fs.readFile(filePath);
 
   res.setHeader('content-type', contentType);
@@ -56,7 +57,7 @@ async function serveStaticIfExists(req, res) {
 }
 
 function createRequest(req) {
-  const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+  const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
   const headers = new Headers();
 
   for (const [key, value] of Object.entries(req.headers)) {
@@ -106,13 +107,13 @@ async function sendResponse(res, response) {
 let appServer;
 async function getAppServer() {
   if (!appServer) {
-    const serverModule = await import('../dist/server/server.js');
-    appServer = serverModule.default ?? serverModule;
+    const serverModule = await import(pathToFileURL(SERVER_PATH).href);
+    appServer = serverModule.default || serverModule;
   }
   return appServer;
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     if (await serveStaticIfExists(req, res)) {
       return;
@@ -124,8 +125,8 @@ export default async function handler(req, res) {
     await sendResponse(res, response);
   } catch (error) {
     console.error('Vercel function error:', error);
-    res.statusCode = 500;
+    res.statusCode = error.status || 500;
     res.setHeader('content-type', 'text/plain; charset=utf-8');
     res.end('Internal Server Error');
   }
-}
+};
