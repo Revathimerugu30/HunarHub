@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "vercel-build": "npm run build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "start": "node server.js",
