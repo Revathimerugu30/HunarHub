@@ -1,12 +1,9 @@
 import { MongoClient, Db } from 'mongodb';
 import mongoose from 'mongoose';
-import dns from 'dns';
-
-// Use Google public DNS to improve SRV resolution in restricted network environments
-dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017';
 const MONGODB_DB = process.env.MONGODB_DB || 'hunarhub';
+const isSrvConnection = MONGODB_URI.startsWith('mongodb+srv://');
 
 if (!process.env.MONGODB_URI) {
   // eslint-disable-next-line no-console
@@ -55,16 +52,22 @@ mongoose.connection.on('error', (err) => {
 export async function getMongoDb(): Promise<Db> {
   if (db) return db;
   if (!client) {
-    client = new MongoClient(MONGODB_URI, {
-      serverApi: {
+    const clientOptions: any = {
+      // Keep server selection/connect timeouts short so requests fail fast
+      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 5000,
+      maxPoolSize: 5,
+      minPoolSize: 1,
+    };
+    if (isSrvConnection) {
+      clientOptions.serverApi = {
         version: '1',
         strict: false,
         deprecationErrors: false,
-      },
-      // Keep server selection/connect timeouts short in dev so requests fail fast
-      connectTimeoutMS: 2000,
-      serverSelectionTimeoutMS: 2000,
-    });
+      };
+    }
+    client = new MongoClient(MONGODB_URI, clientOptions);
   }
   try {
     if (!client.topology || !client.topology.isConnected()) {
@@ -83,6 +86,12 @@ export function isMongooseConnected(): boolean {
   return mongooseConnected && mongoose.connection.readyState === 1;
 }
 
+function buildMongooseUri(): string {
+  const uriWithoutQuery = MONGODB_URI.split('?')[0];
+  const hasDbPath = /\/[^/]+$/.test(uriWithoutQuery);
+  return hasDbPath ? MONGODB_URI : `${MONGODB_URI.replace(/\/+$/, '')}/${MONGODB_DB}`;
+}
+
 export async function connectMongoose(): Promise<void> {
   if (mongooseConnected && mongoose.connection.readyState === 1) return;
   if (mongoose.connection.readyState === 1) {
@@ -92,19 +101,20 @@ export async function connectMongoose(): Promise<void> {
 
   mongooseConnected = false;
   try {
-    const dbUri = `${MONGODB_URI}/${MONGODB_DB}`;
-    await mongoose.connect(dbUri, {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
+    const dbUri = buildMongooseUri();
+    const mongooseOptions: any = {
+      connectTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 5000,
       bufferCommands: false,
-      // Enable SRV discovery with longer timeouts
       retryWrites: true,
       w: 'majority',
-      // directConnection must be false for SRV to work
-      directConnection: false,
-      // Force IPv4 to avoid SRV DNS resolution issues in some environments
-      family: 4,
-    });
+      directConnection: !isSrvConnection,
+    };
+    if (isSrvConnection) {
+      mongooseOptions.family = 4;
+    }
+    await mongoose.connect(dbUri, mongooseOptions);
     mongooseConnected = true;
     // eslint-disable-next-line no-console
     console.log('Mongoose connected to MongoDB Atlas');
